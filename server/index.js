@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+const protect = require("./middleware/authMiddleware");
 
 const app = express();
 
@@ -11,6 +12,14 @@ app.use(express.json());
 // health check route
 app.get("/", (req, res) => {
   res.json({ message: "Server is running" });
+});
+
+// 'protect' function health check route
+app.get("/api/protected", protect, (req, res) => {
+  res.json({
+    message: "You successfully accessed protected route",
+    user: req.user
+  })
 });
 
 // routes
