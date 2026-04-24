@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const protect = require("./middleware/authMiddleware");
+const prisma = require("./prisma/client")
 
 const app = express();
 
