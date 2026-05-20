@@ -23,4 +23,4 @@ async function main() {
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .finally(() => prisma.$disconnect()); // Closes the active database connection so the Node.js process can exit.

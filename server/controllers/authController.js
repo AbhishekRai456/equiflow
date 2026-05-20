@@ -1,9 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
-// temporary in memory storage
-// TODO: replace with DB
-const users = [];
+const prisma = require("../prisma/client");
 
 const register = async (req, res) => {
   try {
@@ -14,24 +11,26 @@ const register = async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const existingUser = users.find((u) => u.email === email);
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
     if (existingUser) {
       return res.status(400).json({ error: "Email already registered" });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = {
-      id: Date.now().toString(),
-      name,
-      email,
-      passwordHash,
-    };
-
-    users.push(user);
+    const user = await prisma.user.create({
+      data: {
+        name: name,
+        email: email,
+        passwordHash: passwordHash,
+      },
+    });
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "7d",
     });
 
     res.status(201).json({
@@ -39,6 +38,7 @@ const register = async (req, res) => {
       user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
+    console.error("Register error:", err);
     res.status(500).json({ error: "Something went wrong" });
   }
 };
@@ -52,7 +52,10 @@ const login = async (req, res) => {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    const user = users.find((u) => u.email === email);
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
     // avoid leaking whether email exists
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
@@ -64,7 +67,7 @@ const login = async (req, res) => {
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: "7d",
     });
 
     res.json({
@@ -72,6 +75,7 @@ const login = async (req, res) => {
       user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ error: "Something went wrong" });
   }
 };
