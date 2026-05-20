@@ -14,7 +14,7 @@ const protect = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // attach the decoded user payload to the request object for downsteam routes
-    req.user = decoded;
+    req.userId = decoded.userId;
     next();
   } catch (err) {
     return res.status(401).json({ error: "Invalid token" });

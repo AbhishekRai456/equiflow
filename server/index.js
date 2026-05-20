@@ -19,13 +19,16 @@ app.get("/", (req, res) => {
 app.get("/api/protected", protect, (req, res) => {
   res.json({
     message: "You successfully accessed protected route",
-    user: req.user
+    userId: req.userId
   })
 });
 
 // routes
 const authRoutes = require("./routes/auth");
+const groupRoutes = require("./routes/groupRoutes");
+
 app.use("/api/auth", authRoutes);
+app.use("/api/groups", groupRoutes);
 
 const PORT = process.env.PORT || 5000;
 
