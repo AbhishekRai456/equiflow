@@ -5,6 +5,7 @@ const {
   createGroup,
   getMyGroups,
   addMember,
+  getGroupById,
 } = require("../controllers/groupController");
 
 // group routes are protected as authMiddleware runs first on every one
@@ -12,5 +13,6 @@ const {
 router.post("/", authMiddleware, createGroup);
 router.get("/", authMiddleware, getMyGroups);
 router.post("/:groupId/members", authMiddleware, addMember);
+router.get("/:groupId", authMiddleware, getGroupById);
 
 module.exports = router;

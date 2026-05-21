@@ -130,4 +130,52 @@ const addMember = async (req, res) => {
   }
 };
 
-module.exports = { createGroup, getMyGroups, addMember };
+const getGroupById = async (req, res) => {
+  const { groupId } = req.params;
+  const userId = req.userId;
+
+  try {
+    // verify the requesting user is actually in this group
+    // Someone shouldn't be able to fetch details of a group they don't belong to
+    const membership = await prisma.groupMember.findUnique({
+      where: {
+        groupId_userId: { groupId, userId },
+      },
+    });
+
+    if (!membership) {
+      return res
+        .status(403)
+        .json({ error: "You are not a member of this group" });
+    }
+
+    // Fetch the group with its members and each member's user info
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        creator: {
+          select: { id: true, name: true, email: true },
+        },
+        members: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+          orderBy: { joinedAt: "asc" }, // creator appears first (they joined first)
+        },
+      },
+    });
+
+    if (!group) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+
+    res.status(200).json({ group });
+  } catch (error) {
+    console.error("Get group by id error:", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+};
+
+module.exports = { createGroup, getMyGroups, addMember, getGroupById };

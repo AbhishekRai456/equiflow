@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { fetchMyGroups } from "../api/groups";
 import CreateGroupModal from "../components/CreateGroupModal";
+import { useNavigate } from "react-router-dom";
 
 function GroupsPage() {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true); // true while the first fetch is happening
   const [error, setError] = useState("");
@@ -73,6 +75,7 @@ function GroupsPage() {
             {groups.map((group) => (
               <div
                 key={group.id}
+                onClick={() => navigate(`/groups/${group.id}`)}
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow cursor-pointer"
               >
                 <h2 className="text-xl font-semibold text-gray-800 mb-1">

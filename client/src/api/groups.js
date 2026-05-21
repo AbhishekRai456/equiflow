@@ -17,3 +17,9 @@ export const addGroupMember = async (groupId, email) => {
   const response = await api.post(`/groups/${groupId}/members`, { email });
   return response.data;
 };
+
+// fetch a group's details by its ID
+export const fetchGroupById = async (groupId) => {
+  const response = await api.get(`/groups/${groupId}`);
+  return response.data.group;
+};
