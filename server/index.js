@@ -26,9 +26,11 @@ app.get("/api/protected", protect, (req, res) => {
 // routes
 const authRoutes = require("./routes/auth");
 const groupRoutes = require("./routes/groupRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
+app.use("/api/categories", categoryRoutes);
 
 const PORT = process.env.PORT || 5000;
 
