@@ -3,18 +3,33 @@ import { useAuth } from "../context/AuthContext";
 import { fetchCategories } from "../api/categories";
 import { createExpense } from "../api/expenses";
 
-function AddExpenseModal({ groupId, onClose, onExpenseAdded }) {
+function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
   const { user } = useAuth();
 
   // Form fields
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [splitType, setSplitType] = useState("EQUAL");
+  const [customAmounts, setCustomAmounts] = useState({});
+  const [percentages, setPercentages] = useState({});
 
   // UI state
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Initialise per-member input maps when members list arrives
+  useEffect(() => {
+    const initialAmounts = {};
+    const initialPcts = {};
+    members.forEach((m) => {
+      initialAmounts[m.user.id] = "";
+      initialPcts[m.user.id] = "";
+    });
+    setCustomAmounts(initialAmounts);
+    setPercentages(initialPcts);
+  }, [members]);
 
   // fetch categories as soon as the modal opens
   useEffect(() => {
@@ -34,6 +49,23 @@ function AddExpenseModal({ groupId, onClose, onExpenseAdded }) {
 
     loadCategories();
   }, []); // run once when modal mounts
+
+  // Derived State => no useState needed for customRemaining/pctRemaining
+  const parsedTotal = parseFloat(amount) || 0;
+
+  const totalCustomEntered = Object.values(customAmounts).reduce(
+    (sum, val) => sum + (parseFloat(val) || 0),
+    0,
+  );
+  const customRemaining = parseFloat(
+    (parsedTotal - totalCustomEntered).toFixed(2),
+  );
+
+  const totalPctEntered = Object.values(percentages).reduce(
+    (sum, val) => sum + (parseFloat(val) || 0),
+    0,
+  );
+  const pctRemaining = parseFloat((100 - totalPctEntered).toFixed(1));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,12 +88,39 @@ function AddExpenseModal({ groupId, onClose, onExpenseAdded }) {
       return;
     }
 
+    if (splitType == "CUSTOM" && Math.abs(customRemaining) > 0.01) {
+      return setError(
+        `Amounts must add up to ₹${parsedTotal.toFixed(2)}. (₹${customRemaining.toFixed(2)} remaining)`,
+      );
+    }
+    if (splitType === "PERCENTAGE" && Math.abs(pctRemaining) > 0.01) {
+      return setError(
+        `Percentages must add up to 100% (${pctRemaining.toFixed(1)}% remaining)`,
+      );
+    }
+
+    // build splits payload for non-equal types
+    let splitsPayload = undefined;
+    if (splitType === "CUSTOM") {
+      splitsPayload = members.map((m) => ({
+        userId: m.user.id,
+        amount: parseFloat(customAmounts[m.user.id] || 0),
+      }));
+    } else if (splitType === "PERCENTAGE") {
+      splitsPayload = members.map((m) => ({
+        userId: m.user.id,
+        percentage: parseFloat(percentages[m.user.id] || 0),
+      }));
+    }
+
     setLoading(true);
     try {
       const newExpense = await createExpense(groupId, {
         description: description.trim(),
-        amount: parsedAmount,
+        amount: parsedTotal,
         categoryId,
+        splitType,
+        splits: splitsPayload,
       });
 
       onExpenseAdded(newExpense); // tell parent to add this to its list
@@ -75,11 +134,11 @@ function AddExpenseModal({ groupId, onClose, onExpenseAdded }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
+        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-screen overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Expense</h2>
@@ -87,8 +146,7 @@ function AddExpenseModal({ groupId, onClose, onExpenseAdded }) {
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Who paid (read only, always the logged-in user for now) */}
-          {/* [TODO: Add functionality to choose who paid]*/}
+          {/* Paid by */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Paid by
@@ -129,12 +187,11 @@ function AddExpenseModal({ groupId, onClose, onExpenseAdded }) {
             />
           </div>
 
-          {/* Category dropdown */}
+          {/* Category */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Category
             </label>
-            {/* value + onChange makes this a controlled select */}
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
@@ -148,9 +205,136 @@ function AddExpenseModal({ groupId, onClose, onExpenseAdded }) {
             </select>
           </div>
 
-          <p className="text-xs text-gray-400">
-            ✦ Will be split equally among all group members
-          </p>
+          {/* Split type selector */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Split type
+            </label>
+            <div className="flex gap-2">
+              {["EQUAL", "CUSTOM", "PERCENTAGE"].map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setSplitType(type)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    splitType === type
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {type === "EQUAL"
+                    ? "Equal"
+                    : type === "CUSTOM"
+                      ? "Custom ₹"
+                      : "Percentage %"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* EQUAL*/}
+          {splitType === "EQUAL" && (
+            <p className="text-xs text-gray-400">
+              ✦ Split equally among all {members.length} members
+            </p>
+          )}
+
+          {/* CUSTOM */}
+          {splitType === "CUSTOM" && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <p className="text-xs font-medium text-gray-600">
+                  Enter each person's share
+                </p>
+                <p
+                  className={`text-xs font-semibold ${
+                    Math.abs(customRemaining) < 0.01
+                      ? "text-green-600"
+                      : "text-orange-500"
+                  }`}
+                >
+                  {Math.abs(customRemaining) < 0.01
+                    ? "✓ Balanced"
+                    : `₹${customRemaining.toFixed(2)} remaining`}
+                </p>
+              </div>
+              {members.map((m) => (
+                <div key={m.user.id} className="flex items-center gap-3">
+                  <span className="text-sm text-gray-700 w-24 truncate">
+                    {m.user.id === user.id ? "You" : m.user.name}
+                  </span>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-2 text-gray-400 text-sm">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      value={customAmounts[m.user.id] || ""}
+                      onChange={(e) =>
+                        setCustomAmounts((prev) => ({
+                          ...prev,
+                          [m.user.id]: e.target.value,
+                        }))
+                      }
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="w-full border border-gray-300 rounded-lg pl-7 pr-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* PERCENTAGE */}
+          {splitType === "PERCENTAGE" && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <p className="text-xs font-medium text-gray-600">
+                  Enter each person's percentage
+                </p>
+                <p
+                  className={`text-xs font-semibold ${
+                    Math.abs(pctRemaining) < 0.01
+                      ? "text-green-600"
+                      : "text-orange-500"
+                  }`}
+                >
+                  {Math.abs(pctRemaining) < 0.01
+                    ? "✓ Balanced"
+                    : `${pctRemaining.toFixed(1)}% remaining`}
+                </p>
+              </div>
+              {members.map((m) => (
+                <div key={m.user.id} className="flex items-center gap-3">
+                  <span className="text-sm text-gray-700 w-24 truncate">
+                    {m.user.id === user.id ? "You" : m.user.name}
+                  </span>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      value={percentages[m.user.id] || ""}
+                      onChange={(e) =>
+                        setPercentages((prev) => ({
+                          ...prev,
+                          [m.user.id]: e.target.value,
+                        }))
+                      }
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      className="w-full border border-gray-300 rounded-lg pl-3 pr-7 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <span className="absolute right-3 top-2 text-gray-400 text-sm">
+                      %
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button

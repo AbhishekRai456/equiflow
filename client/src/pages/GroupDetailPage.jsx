@@ -29,6 +29,11 @@ function GroupDetailPage() {
   const [addMemberSuccess, setAddMemberSuccess] = useState("");
   const [addingMember, setAddingMember] = useState(false);
 
+  // pay a member/custom settlement form state
+  const [directPayToId, setDirectPayToId] = useState("");
+  const [directPayAmount, setDirectPayAmount] = useState("");
+  const [directPayError, setDirectPayError] = useState("");
+
   // fetch group details when page loads
   useEffect(() => {
     const loadAll = async () => {
@@ -41,6 +46,15 @@ function GroupDetailPage() {
             fetchSettlements(groupId),
           ]);
         setGroup(groupData);
+
+        // pre-select the first non-current user member in the dropdown
+        const otherMembers = groupData.members.filter(
+          (m) => m.user.id !== user.id,
+        );
+        if (otherMembers.length > 0) {
+          setDirectPayToId(otherMembers[0].user.id);
+        }
+
         setExpenses(expensesData);
         setBalances(balancesData);
         setSettlementHistory(settlementsData);
@@ -115,6 +129,41 @@ function GroupDetailPage() {
       setSettlementHistory(settlementsData);
     } catch (err) {
       alert(err.response?.data?.error || "Failed to record settlement");
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  const handleDirectPay = async () => {
+    setDirectPayError("");
+    const amt = parseFloat(directPayAmount);
+
+    if (!directPayToId) return setDirectPayError("Please select a member");
+    if (!amt || amt <= 0) return setDirectPayError("Enter a valid amount");
+
+    setIsSettling(true);
+    try {
+      await recordSettlement(groupId, {
+        payerId: user.id,
+        receiverId: directPayToId,
+        amount: amt,
+      });
+
+      // refresh both balances and settlement history concurrently
+      const [balancesData, settlementsData] = await Promise.all([
+        fetchGroupBalances(groupId),
+        fetchSettlements(groupId),
+      ]);
+
+      setBalances(balancesData);
+      setSettlementHistory(settlementsData);
+
+      // Clear the input field text upon a successful payment
+      setDirectPayAmount("");
+    } catch (err) {
+      setDirectPayError(
+        err.response?.data?.error || "Failed to record payment",
+      );
     } finally {
       setIsSettling(false);
     }
@@ -308,6 +357,61 @@ function GroupDetailPage() {
             </div>
           )}
 
+          {/* Pay a member directly */}
+          {group.members.filter((m) => m.user.id !== user.id).length > 0 && (
+            <div className="mt-5 pt-4 border-t border-gray-100">
+              <p className="text-sm font-medium text-gray-500 mb-3">
+                Pay a member directly
+              </p>
+
+              {directPayError && (
+                <p className="text-red-500 text-xs mb-2">{directPayError}</p>
+              )}
+
+              <div className="flex gap-2">
+                {/* Dropdown to select member */}
+                <select
+                  value={directPayToId}
+                  onChange={(e) => setDirectPayToId(e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {group.members
+                    .filter((m) => m.user.id !== user.id)
+                    .map((m) => (
+                      <option key={m.user.id} value={m.user.id}>
+                        {m.user.name}
+                      </option>
+                    ))}
+                </select>
+
+                {/* Amount input field */}
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-400 text-sm">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    value={directPayAmount}
+                    onChange={(e) => setDirectPayAmount(e.target.value)}
+                    placeholder="0.00"
+                    min="0.01"
+                    step="0.01"
+                    className="w-28 border border-gray-300 rounded-lg pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Submit button */}
+                <button
+                  onClick={handleDirectPay}
+                  disabled={isSettling}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isSettling ? "Paying..." : "Pay"}
+                </button>
+              </div>
+            </div>
+          )}
+
           {balances.settlements.length === 0 &&
             balances.memberBalances.length > 0 && (
               <p className="text-sm text-green-600 text-center py-2">
@@ -376,6 +480,13 @@ function GroupDetailPage() {
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
                           {expense.category.name}
+                        </span>
+                        <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                          {expense.splitType === "EQUAL"
+                            ? "Equal"
+                            : expense.splitType === "CUSTOM"
+                              ? "Custom"
+                              : "Percentage"}
                         </span>
                         <span className="text-xs text-gray-400">
                           Paid by{" "}
@@ -464,6 +575,7 @@ function GroupDetailPage() {
       {showExpenseModal && (
         <AddExpenseModal
           groupId={groupId}
+          members={group.members}
           onClose={() => setShowExpenseModal(false)}
           onExpenseAdded={handleExpenseAdded}
         />
