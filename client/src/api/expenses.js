@@ -9,3 +9,8 @@ export const createExpense = async (groupId, data) => {
   const response = await api.post(`/groups/${groupId}/expenses`, data);
   return response.data.expense;
 };
+
+export const fetchGroupBalances = async (groupId) => {
+  const response = await api.get(`/groups/${groupId}/balances`);
+  return response.data;
+};

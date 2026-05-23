@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchGroupById, addGroupMember } from "../api/groups";
-import { fetchGroupExpenses } from "../api/expenses";
+import { fetchGroupExpenses, fetchGroupBalances } from "../api/expenses";
 import AddExpenseModal from "../components/AddExpenseModal";
 
 function GroupDetailPage() {
@@ -15,6 +15,7 @@ function GroupDetailPage() {
   const [error, setError] = useState("");
   const [expenses, setExpenses] = useState([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [balances, setBalances] = useState({memberBalances: [], settlements: []});
 
   // add member form state
   const [memberEmail, setMemberEmail] = useState("");
@@ -24,14 +25,16 @@ function GroupDetailPage() {
 
   // fetch group details when page loads
   useEffect(() => {
-    const loadGroup = async () => {
+    const loadAll = async () => {
       try {
-        const [groupData, expensesData] = await Promise.all([
+        const [groupData, expensesData, balancesData] = await Promise.all([
           fetchGroupById(groupId),
           fetchGroupExpenses(groupId),
+          fetchGroupBalances(groupId)
         ]);
         setGroup(groupData);
         setExpenses(expensesData);
+        setBalances(balancesData);
       } catch (err) {
         setError("Failed to load group details.");
       } finally {
@@ -39,7 +42,7 @@ function GroupDetailPage() {
       }
     };
 
-    loadGroup();
+    loadAll();
   }, [groupId]); // re-run if groupId in the URL ever changes
 
   const handleAddMember = async (e) => {
@@ -77,8 +80,16 @@ function GroupDetailPage() {
     }
   };
 
-  const handleExpenseAdded = (newExpense) => {
+  const handleExpenseAdded = async (newExpense) => {
     setExpenses((prev) => [newExpense, ...prev]);
+
+    // re-fetch updated balances whenever a new expense is added
+    try {
+      const balancesData = await fetchGroupBalances(groupId);
+      setBalances(balancesData);
+    } catch (err) {
+      console.error("Failed to refresh balances:", err);
+    }
   };
 
   // loading state
@@ -164,6 +175,102 @@ function GroupDetailPage() {
             ))}
           </ul>
         </div>
+
+        {/* Balances */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">Balances</h2>
+
+            {/* Net balance per member */}
+            <ul className="divide-y divide-gray-100 mb-5">
+              {balances.memberBalances.map((entry) => {
+                const isCurrentUser = entry.user.id === user.id;
+                const isOwed = entry.net > 0;
+                const isOwes = entry.net < 0;
+                const isSettled = entry.net === 0;
+
+                return (
+                  <li
+                    key={entry.user.id}
+                    className="py-3 flex items-center justify-between"
+                  >
+                    <span className="text-gray-700 font-medium">
+                      {isCurrentUser ? "You" : entry.user.name}
+                    </span>
+
+                    <span
+                      className={
+                        isOwed
+                          ? "text-green-600 font-semibold"
+                          : isOwes
+                          ? "text-red-500 font-semibold"
+                          : "text-gray-400"
+                      }
+                    >
+                      {isOwed && (
+                        isCurrentUser 
+                          ? `you get back ₹${entry.net.toFixed(2)}` 
+                          : `gets back ₹${entry.net.toFixed(2)}`
+                      )}
+                      {isOwes && (
+                        isCurrentUser 
+                          ? `you owe ₹${Math.abs(entry.net).toFixed(2)}` 
+                          : `owes ₹${Math.abs(entry.net).toFixed(2)}`
+                      )}
+                      {isSettled && "Settled up"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Suggested settlements */}
+            {balances.settlements.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-3">
+                  Suggested payments
+                </p>
+                <ul className="space-y-2">
+                  {balances.settlements.map((s, index) => {
+                    const fromIsYou = s.from.id === user.id;
+                    const toIsYou = s.to.id === user.id;
+
+                    return (
+                      <li
+                        key={index}
+                        className={`flex items-center justify-between text-sm rounded-lg px-4 py-3 ${
+                          fromIsYou
+                            ? "bg-red-50 border border-red-100"   // you owe someone
+                            : toIsYou
+                            ? "bg-green-50 border border-green-100" // someone owes you
+                            : "bg-gray-50 border border-gray-100"
+                        }`}
+                      >
+                        <span className="text-gray-700">
+                          <span className="font-medium">
+                            {fromIsYou ? "You" : s.from.name}
+                          </span>
+                          {" → "}
+                          <span className="font-medium">
+                            {toIsYou ? "You" : s.to.name}
+                          </span>
+                        </span>
+                        <span className="font-semibold text-gray-800">
+                          ₹{s.amount.toFixed(2)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {balances.settlements.length === 0 &&
+              balances.memberBalances.length > 0 && (
+                <p className="text-sm text-green-600 text-center py-2">
+                  ✓ Everyone is settled up
+                </p>
+              )}
+          </div>
 
         {/* Add member form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
