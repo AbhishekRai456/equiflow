@@ -61,6 +61,22 @@ const getBalances = async (req, res) => {
       balanceMap[debtorId].net -= split.amount;
     }
 
+    // fetch all settlements and adjust balances
+    // a settlements means the payer reduced their debt and the receiver got paid back.
+    // hence, this works whether the settlement was direct or minimized (virtual).
+    const allSettlements = await prisma.settlement.findMany({
+      where: { groupId },
+    });
+
+    for (const settlement of allSettlements) {
+      if (balanceMap[settlement.payerId]) {
+        balanceMap[settlement.payerId].net += settlement.amount;
+      }
+      if (balanceMap[settlement.receiverId]) {
+        balanceMap[settlement.receiverId].net -= settlement.amount;
+      }
+    }
+
     // Greedy Debt Minimization Algorithm
     const creditors = []; // net > 0 => are owed money
     const debtors = []; // net < 0 => owe money

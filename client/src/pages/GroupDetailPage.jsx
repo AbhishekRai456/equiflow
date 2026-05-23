@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchGroupById, addGroupMember } from "../api/groups";
 import { fetchGroupExpenses, fetchGroupBalances } from "../api/expenses";
+import { recordSettlement, fetchSettlements } from "../api/settlements";
 import AddExpenseModal from "../components/AddExpenseModal";
 
 function GroupDetailPage() {
@@ -15,7 +16,12 @@ function GroupDetailPage() {
   const [error, setError] = useState("");
   const [expenses, setExpenses] = useState([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [balances, setBalances] = useState({memberBalances: [], settlements: []});
+  const [balances, setBalances] = useState({
+    memberBalances: [],
+    settlements: [],
+  });
+  const [settlementHistory, setSettlementHistory] = useState([]);
+  const [isSettling, setIsSettling] = useState(false);
 
   // add member form state
   const [memberEmail, setMemberEmail] = useState("");
@@ -27,14 +33,17 @@ function GroupDetailPage() {
   useEffect(() => {
     const loadAll = async () => {
       try {
-        const [groupData, expensesData, balancesData] = await Promise.all([
-          fetchGroupById(groupId),
-          fetchGroupExpenses(groupId),
-          fetchGroupBalances(groupId)
-        ]);
+        const [groupData, expensesData, balancesData, settlementsData] =
+          await Promise.all([
+            fetchGroupById(groupId),
+            fetchGroupExpenses(groupId),
+            fetchGroupBalances(groupId),
+            fetchSettlements(groupId),
+          ]);
         setGroup(groupData);
         setExpenses(expensesData);
         setBalances(balancesData);
+        setSettlementHistory(settlementsData);
       } catch (err) {
         setError("Failed to load group details.");
       } finally {
@@ -89,6 +98,25 @@ function GroupDetailPage() {
       setBalances(balancesData);
     } catch (err) {
       console.error("Failed to refresh balances:", err);
+    }
+  };
+
+  const handleSettle = async (payerId, receiverId, amount) => {
+    setIsSettling(true);
+    try {
+      await recordSettlement(groupId, { payerId, receiverId, amount });
+
+      // refresh both to reflect the new math
+      const [balancesData, settlementsData] = await Promise.all([
+        fetchGroupBalances(groupId),
+        fetchSettlements(groupId),
+      ]);
+      setBalances(balancesData);
+      setSettlementHistory(settlementsData);
+    } catch (err) {
+      alert(err.response?.data?.error || "Failed to record settlement");
+    } finally {
+      setIsSettling(false);
     }
   };
 
@@ -177,100 +205,116 @@ function GroupDetailPage() {
         </div>
 
         {/* Balances */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">Balances</h2>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">Balances</h2>
 
-            {/* Net balance per member */}
-            <ul className="divide-y divide-gray-100 mb-5">
-              {balances.memberBalances.map((entry) => {
-                const isCurrentUser = entry.user.id === user.id;
-                const isOwed = entry.net > 0;
-                const isOwes = entry.net < 0;
-                const isSettled = entry.net === 0;
+          {/* Net balance per member */}
+          <ul className="divide-y divide-gray-100 mb-5">
+            {balances.memberBalances.map((entry) => {
+              const isCurrentUser = entry.user.id === user.id;
+              const isOwed = entry.net > 0;
+              const isOwes = entry.net < 0;
+              const isSettled = entry.net === 0;
 
-                return (
-                  <li
-                    key={entry.user.id}
-                    className="py-3 flex items-center justify-between"
-                  >
-                    <span className="text-gray-700 font-medium">
-                      {isCurrentUser ? "You" : entry.user.name}
-                    </span>
+              return (
+                <li
+                  key={entry.user.id}
+                  className="py-3 flex items-center justify-between"
+                >
+                  <span className="text-gray-700 font-medium">
+                    {isCurrentUser ? "You" : entry.user.name}
+                  </span>
 
-                    <span
-                      className={
-                        isOwed
-                          ? "text-green-600 font-semibold"
-                          : isOwes
+                  <span
+                    className={
+                      isOwed
+                        ? "text-green-600 font-semibold"
+                        : isOwes
                           ? "text-red-500 font-semibold"
                           : "text-gray-400"
-                      }
-                    >
-                      {isOwed && (
-                        isCurrentUser 
-                          ? `you get back ₹${entry.net.toFixed(2)}` 
-                          : `gets back ₹${entry.net.toFixed(2)}`
-                      )}
-                      {isOwes && (
-                        isCurrentUser 
-                          ? `you owe ₹${Math.abs(entry.net).toFixed(2)}` 
-                          : `owes ₹${Math.abs(entry.net).toFixed(2)}`
-                      )}
-                      {isSettled && "Settled up"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+                    }
+                  >
+                    {isOwed &&
+                      (isCurrentUser
+                        ? `you get back ₹${entry.net.toFixed(2)}`
+                        : `gets back ₹${entry.net.toFixed(2)}`)}
+                    {isOwes &&
+                      (isCurrentUser
+                        ? `you owe ₹${Math.abs(entry.net).toFixed(2)}`
+                        : `owes ₹${Math.abs(entry.net).toFixed(2)}`)}
+                    {isSettled && "Settled up"}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
 
-            {/* Suggested settlements */}
-            {balances.settlements.length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-gray-500 mb-3">
-                  Suggested payments
-                </p>
-                <ul className="space-y-2">
-                  {balances.settlements.map((s, index) => {
-                    const fromIsYou = s.from.id === user.id;
-                    const toIsYou = s.to.id === user.id;
+          {/* Suggested settlements */}
+          {balances.settlements.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-gray-500 mb-3">
+                Suggested payments
+              </p>
+              <ul className="space-y-2">
+                {balances.settlements.map((s, index) => {
+                  const fromIsYou = s.from.id === user.id;
+                  const toIsYou = s.to.id === user.id;
+                  const involvesYou = fromIsYou || toIsYou;
 
-                    return (
-                      <li
-                        key={index}
-                        className={`flex items-center justify-between text-sm rounded-lg px-4 py-3 ${
-                          fromIsYou
-                            ? "bg-red-50 border border-red-100"   // you owe someone
-                            : toIsYou
-                            ? "bg-green-50 border border-green-100" // someone owes you
+                  return (
+                    <li
+                      key={index}
+                      className={`flex items-center justify-between text-sm rounded-lg px-4 py-3 ${
+                        fromIsYou
+                          ? "bg-red-50 border border-red-100"
+                          : toIsYou
+                            ? "bg-green-50 border border-green-100"
                             : "bg-gray-50 border border-gray-100"
-                        }`}
-                      >
-                        <span className="text-gray-700">
-                          <span className="font-medium">
-                            {fromIsYou ? "You" : s.from.name}
-                          </span>
-                          {" → "}
-                          <span className="font-medium">
-                            {toIsYou ? "You" : s.to.name}
-                          </span>
+                      }`}
+                    >
+                      {/* Who pays whom */}
+                      <span className="text-gray-700">
+                        <span className="font-medium">
+                          {fromIsYou ? "You" : s.from.name}
                         </span>
+                        {" → "}
+                        <span className="font-medium">
+                          {toIsYou ? "You" : s.to.name}
+                        </span>
+                      </span>
+
+                      <div className="flex items-center gap-3">
                         <span className="font-semibold text-gray-800">
                           ₹{s.amount.toFixed(2)}
                         </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
 
-            {balances.settlements.length === 0 &&
-              balances.memberBalances.length > 0 && (
-                <p className="text-sm text-green-600 text-center py-2">
-                  ✓ Everyone is settled up
-                </p>
-              )}
-          </div>
+                        {/* Only show action button if current user is the payer or receiver */}
+                        {involvesYou && (
+                          <button
+                            onClick={() =>
+                              handleSettle(s.from.id, s.to.id, s.amount)
+                            }
+                            disabled={isSettling}
+                            className="text-xs bg-white border border-gray-300 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            {fromIsYou ? "I paid" : "Mark received"}
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {balances.settlements.length === 0 &&
+            balances.memberBalances.length > 0 && (
+              <p className="text-sm text-green-600 text-center py-2">
+                ✓ Everyone is settled up
+              </p>
+            )}
+        </div>
 
         {/* Add member form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -368,15 +412,6 @@ function GroupDetailPage() {
                             <span className="text-gray-700">
                               ₹{split.amount.toFixed(2)}
                             </span>
-                            {split.isPaid ? (
-                              <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                                Settled
-                              </span>
-                            ) : (
-                              <span className="text-xs text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">
-                                Pending
-                              </span>
-                            )}
                           </div>
                         </div>
                       );
@@ -387,6 +422,44 @@ function GroupDetailPage() {
             </div>
           )}
         </div>
+        {settlementHistory.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-lg font-semibold text-gray-700 mb-4">
+              Settlement History
+            </h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+              {settlementHistory.map((s) => {
+                const payerIsYou = s.payer.id === user.id;
+                const receiverIsYou = s.receiver.id === user.id;
+
+                return (
+                  <div
+                    key={s.id}
+                    className="flex items-center justify-between px-5 py-4"
+                  >
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        <span className="font-medium">
+                          {payerIsYou ? "You" : s.payer.name}
+                        </span>
+                        {" paid "}
+                        <span className="font-medium">
+                          {receiverIsYou ? "you" : s.receiver.name}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {new Date(s.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-green-600">
+                      ₹{s.amount.toFixed(2)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
       {showExpenseModal && (
         <AddExpenseModal
