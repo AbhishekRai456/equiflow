@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchGroupById, addGroupMember } from "../api/groups";
+import { fetchGroupExpenses } from "../api/expenses";
+import AddExpenseModal from "../components/AddExpenseModal";
 
 function GroupDetailPage() {
   const { groupId } = useParams(); // reads :groupId from the URL
@@ -11,6 +13,8 @@ function GroupDetailPage() {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expenses, setExpenses] = useState([]);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   // add member form state
   const [memberEmail, setMemberEmail] = useState("");
@@ -22,8 +26,12 @@ function GroupDetailPage() {
   useEffect(() => {
     const loadGroup = async () => {
       try {
-        const data = await fetchGroupById(groupId);
-        setGroup(data);
+        const [groupData, expensesData] = await Promise.all([
+          fetchGroupById(groupId),
+          fetchGroupExpenses(groupId),
+        ]);
+        setGroup(groupData);
+        setExpenses(expensesData);
       } catch (err) {
         setError("Failed to load group details.");
       } finally {
@@ -69,6 +77,10 @@ function GroupDetailPage() {
     }
   };
 
+  const handleExpenseAdded = (newExpense) => {
+    setExpenses((prev) => [newExpense, ...prev]);
+  };
+
   // loading state
   if (loading) {
     return (
@@ -101,11 +113,21 @@ function GroupDetailPage() {
 
         {/* Group header */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">{group.name}</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Created by {group.creator.name} ·{" "}
-            {new Date(group.createdAt).toLocaleDateString()}
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800">{group.name}</h1>
+              <p className="text-sm text-gray-400 mt-1">
+                Created by {group.creator.name} ·{" "}
+                {new Date(group.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowExpenseModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
+            >
+              + Add Expense
+            </button>
+          </div>
         </div>
 
         {/* Members list */}
@@ -173,7 +195,99 @@ function GroupDetailPage() {
             </button>
           </form>
         </div>
+
+        {/* Expenses list */}
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">
+            Expenses ({expenses.length})
+          </h2>
+
+          {expenses.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+              <p className="text-gray-400">No expenses yet.</p>
+              <p className="text-gray-400 text-sm mt-1">
+                Add the first one with the button above.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {expenses.map((expense) => (
+                <div
+                  key={expense.id}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"
+                >
+                  {/* Expense header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-800">
+                        {expense.description}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                          {expense.category.name}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          Paid by{" "}
+                          {expense.paidBy.id === user.id
+                            ? "you"
+                            : expense.paidBy.name}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-lg font-bold text-gray-800">
+                      ₹{expense.amount.toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* Splits breakdown */}
+                  <div className="border-t border-gray-100 pt-3 space-y-1">
+                    {expense.splits.map((split) => {
+                      const isCurrentUser = split.user.id === user.id;
+                      return (
+                        <div
+                          key={split.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span
+                            className={
+                              isCurrentUser
+                                ? "font-medium text-blue-600"
+                                : "text-gray-600"
+                            }
+                          >
+                            {isCurrentUser ? "You" : split.user.name}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-700">
+                              ₹{split.amount.toFixed(2)}
+                            </span>
+                            {split.isPaid ? (
+                              <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                                Settled
+                              </span>
+                            ) : (
+                              <span className="text-xs text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">
+                                Pending
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+      {showExpenseModal && (
+        <AddExpenseModal
+          groupId={groupId}
+          onClose={() => setShowExpenseModal(false)}
+          onExpenseAdded={handleExpenseAdded}
+        />
+      )}
     </div>
   );
 }
