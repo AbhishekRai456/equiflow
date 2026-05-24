@@ -18,6 +18,9 @@ function Navbar() {
           // logged in
           <>
             <span className="text-gray-500 text-sm">Hi, {user.name}</span>
+            <Link to="/dashboard" className="text-gray-600 hover:text-blue-500 font-medium">
+              Dashboard
+            </Link>
             <Link
               to="/groups"
               className="text-gray-600 hover:text-blue-500 font-medium"

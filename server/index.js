@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const protect = require("./middleware/authMiddleware");
-const prisma = require("./prisma/client")
+const prisma = require("./prisma/client");
 
 const app = express();
 
@@ -19,18 +19,20 @@ app.get("/", (req, res) => {
 app.get("/api/protected", protect, (req, res) => {
   res.json({
     message: "You successfully accessed protected route",
-    userId: req.userId
-  })
+    userId: req.userId,
+  });
 });
 
 // routes
 const authRoutes = require("./routes/auth");
 const groupRoutes = require("./routes/groupRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 const PORT = process.env.PORT || 5000;
 
