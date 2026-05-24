@@ -14,8 +14,13 @@ function GroupDetailPage() {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // expense-related state
   const [expenses, setExpenses] = useState([]);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
+
+  // balance-related state
   const [balances, setBalances] = useState({
     memberBalances: [],
     settlements: [],
@@ -33,6 +38,17 @@ function GroupDetailPage() {
   const [directPayToId, setDirectPayToId] = useState("");
   const [directPayAmount, setDirectPayAmount] = useState("");
   const [directPayError, setDirectPayError] = useState("");
+
+  // get unique categories that actually appear in this group's expenses
+  const expenseCategories = [
+    ...new Map(expenses.map((e) => [e.category.id, e.category])).values(),
+  ];
+
+  // the filtered expense list the UI will actually render
+  const filteredExpenses =
+    selectedCategory == "ALL"
+      ? expenses
+      : expenses.filter((e) => e.category.id === selectedCategory);
 
   // fetch group details when page loads
   useEffect(() => {
@@ -105,6 +121,7 @@ function GroupDetailPage() {
 
   const handleExpenseAdded = async (newExpense) => {
     setExpenses((prev) => [newExpense, ...prev]);
+    setSelectedCategory("ALL"); // so that new expense is always visible
 
     // re-fetch updated balances whenever a new expense is added
     try {
@@ -453,10 +470,47 @@ function GroupDetailPage() {
 
         {/* Expenses list */}
         <div className="mt-6">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Expenses ({expenses.length})
-          </h2>
+          {/* Header row */}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-700">
+              Expenses ({filteredExpenses.length}
+              {selectedCategory !== "ALL" && ` of ${expenses.length}`})
+            </h2>
+          </div>
 
+          {/* Category filter pills (only show if there are expenses) */}
+          {expenses.length > 0 && (
+            <div className="flex gap-2 flex-wrap mb-4">
+              {/* "All" pill */}
+              <button
+                onClick={() => setSelectedCategory("ALL")}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === "ALL"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                All
+              </button>
+
+              {/* One pill per category that has at least one expense */}
+              {expenseCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    selectedCategory === cat.id
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state for no expenses at all */}
           {expenses.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
               <p className="text-gray-400">No expenses yet.</p>
@@ -464,9 +518,20 @@ function GroupDetailPage() {
                 Add the first one with the button above.
               </p>
             </div>
+          ) : filteredExpenses.length === 0 ? (
+            // Empty state when a filter is active but no matches
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+              <p className="text-gray-400">No expenses in this category.</p>
+              <button
+                onClick={() => setSelectedCategory("ALL")}
+                className="mt-3 text-blue-500 text-sm hover:text-blue-600"
+              >
+                Show all expenses
+              </button>
+            </div>
           ) : (
             <div className="space-y-4">
-              {expenses.map((expense) => (
+              {filteredExpenses.map((expense) => (
                 <div
                   key={expense.id}
                   className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"
