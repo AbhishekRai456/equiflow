@@ -4,6 +4,7 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import GroupsPage from "./pages/GroupsPage";
 import GroupDetailPage from "./pages/GroupDetailPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import GuestRoute from "./components/GuestRoute";
 import Navbar from "./components/Navbar";
@@ -50,6 +51,14 @@ function App() {
           element={
             <ProtectedRoute>
               <GroupDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/groups/:groupId/analytics"
+          element={
+            <ProtectedRoute>
+              <AnalyticsPage />
             </ProtectedRoute>
           }
         />

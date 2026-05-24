@@ -16,6 +16,7 @@ const {
   recordSettlement,
   getSettlements,
 } = require("../controllers/settlementsController");
+const { getGroupAnalytics } = require("../controllers/analyticsController");
 
 // group routes are protected as authMiddleware runs first on every one
 // If JWT is missing/invalid, authMiddleware sends 401 and controller never runs
@@ -28,5 +29,6 @@ router.get("/:groupId/expenses", authMiddleware, getExpenses);
 router.get("/:groupId/balances", authMiddleware, getBalances);
 router.post("/:groupId/settlements", authMiddleware, recordSettlement);
 router.get("/:groupId/settlements", authMiddleware, getSettlements);
+router.get("/:groupId/analytics", authMiddleware, getGroupAnalytics);
 
 module.exports = router;

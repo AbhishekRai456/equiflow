@@ -226,12 +226,20 @@ function GroupDetailPage() {
                 {new Date(group.createdAt).toLocaleDateString()}
               </p>
             </div>
-            <button
-              onClick={() => setShowExpenseModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
-            >
-              + Add Expense
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => navigate(`/groups/${groupId}/analytics`)}
+                className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50"
+              >
+                Analytics →
+              </button>
+              <button
+                onClick={() => setShowExpenseModal(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
+              >
+                + Add Expense
+              </button>
+            </div>
           </div>
         </div>
 
