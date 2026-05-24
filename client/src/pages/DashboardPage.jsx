@@ -2,6 +2,48 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchDashboard } from "../api/dashboard";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+
+// color palette for the chart bars
+const BAR_COLORS = [
+  "#3b82f6",
+  "#8b5cf6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#06b6d4",
+];
+
+// YYYY-MM => Month YY
+const formatMonthLabel = (monthStr) => {
+  const [year, month] = monthStr.split("-");
+  const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+  return date.toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+};
+
+// custom recharts tooltip
+const RupeeTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-md px-3 py-2 text-sm">
+        <p className="text-gray-500 mb-1">{label}</p>
+        <p className="font-semibold text-gray-800">
+          ₹{payload[0].value.toFixed(2)}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
 
 function DashboardPage() {
   const { user } = useAuth();
@@ -169,6 +211,107 @@ function DashboardPage() {
             </div>
           )}
         </div>
+        {/* Analytics charts */}
+        {summary.byCategory.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold text-gray-700 mb-5">
+              Your spending overview
+            </h2>
+
+            {/* Spending by category */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">
+              <p className="font-medium text-gray-700 mb-1">By category</p>
+              <p className="text-sm text-gray-400 mb-5">
+                Total across all your groups
+              </p>
+
+              <ResponsiveContainer
+                width="100%"
+                height={summary.byCategory.length * 52 + 20}
+              >
+                <BarChart
+                  data={summary.byCategory}
+                  layout="vertical"
+                  margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(v) => `₹${v}`}
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    tick={{ fontSize: 13, fill: "#374151" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={90}
+                  />
+                  <Tooltip
+                    content={<RupeeTooltip />}
+                    cursor={{ fill: "#f3f4f6" }}
+                  />
+                  <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={36}>
+                    {summary.byCategory.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={BAR_COLORS[index % BAR_COLORS.length]}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Monthly trend */}
+            {summary.byMonth.length > 1 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <p className="font-medium text-gray-700 mb-1">Monthly trend</p>
+                <p className="text-sm text-gray-400 mb-5">
+                  Total spend per month across all groups
+                </p>
+
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart
+                    data={summary.byMonth.map((item) => ({
+                      ...item,
+                      monthLabel: formatMonthLabel(item.month),
+                    }))}
+                    margin={{ top: 0, right: 10, left: 10, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="monthLabel"
+                      tick={{ fontSize: 12, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => `₹${v}`}
+                      tick={{ fontSize: 12, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={60}
+                    />
+                    <Tooltip
+                      content={<RupeeTooltip />}
+                      cursor={{ fill: "#f3f4f6" }}
+                    />
+                    <Bar
+                      dataKey="total"
+                      fill="#3b82f6"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={48}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

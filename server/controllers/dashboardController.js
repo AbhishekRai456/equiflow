@@ -19,10 +19,64 @@ const getDashboard = async (req, res) => {
         totalOwedToMe: 0,
         totalIOwe: 0,
         groups: [],
+        byCategory: [],
+        byMonth: [],
       });
     }
 
     const groupIds = memberships.map((m) => m.groupId);
+
+    // Fetch user's own ExpenseSplit rows
+    const personalSplits = await prisma.expenseSplit.findMany({
+      where: {
+        userId: userId,
+        expense: { groupId: { in: groupIds } },
+      },
+      include: {
+        expense: {
+          select: { categoryId: true, createdAt: true },
+        },
+      },
+    });
+
+    // Aggregate by category and month
+    const categoryTotals = {};
+    const monthTotals = {};
+
+    for (const split of personalSplits) {
+      // category aggregation
+      const catId = split.expense.categoryId;
+      categoryTotals[catId] = (categoryTotals[catId] || 0) + split.amount;
+
+      // monthly aggregation
+      const monthKey = split.expense.createdAt.toISOString().slice(0, 7);
+      monthTotals[monthKey] = (monthTotals[monthKey] || 0) + split.amount;
+    }
+
+    // Fetch category names for the ids user used
+    const usedCategoryIds = Object.keys(categoryTotals);
+    const categoriesForDashboard = await prisma.category.findMany({
+      where: { id: { in: usedCategoryIds } },
+    });
+
+    const categoryNameMap = {};
+    categoriesForDashboard.forEach((c) => {
+      categoryNameMap[c.id] = c.name;
+    });
+
+    const byCategory = Object.entries(categoryTotals)
+      .map(([catId, total]) => ({
+        category: categoryNameMap[catId] || "Unknown",
+        total: parseFloat(total.toFixed(2)),
+      }))
+      .sort((a, b) => b.total - a.total); // highest spending first
+
+    const byMonth = Object.entries(monthTotals)
+      .map(([month, total]) => ({
+        month,
+        total: parseFloat(total.toFixed(2)),
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month)); // chronological order
 
     // Fetch splits where money is owed to the logged-in user
     // (expenses logged-in user paid for, split rows belonging to other members)
@@ -118,6 +172,8 @@ const getDashboard = async (req, res) => {
       totalOwedToMe: parseFloat(totalOwedToMe.toFixed(2)),
       totalIOwe: parseFloat(totalIOwe.toFixed(2)),
       groups,
+      byCategory,
+      byMonth
     });
   } catch (error) {
     console.error("Dashboard error:", error);
