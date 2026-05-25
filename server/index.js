@@ -8,7 +8,7 @@ const app = express();
 
 // middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); 
 
 // health check route
 app.get("/", (req, res) => {
@@ -29,12 +29,14 @@ const groupRoutes = require("./routes/groupRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const insightsRoutes = require("./routes/insightsRoutes");
+const receiptsRoutes = require("./routes/receiptsRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/insights", insightsRoutes);
+app.use("/api/receipts", receiptsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

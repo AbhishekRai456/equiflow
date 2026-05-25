@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { fetchCategories } from "../api/categories";
 import { createExpense } from "../api/expenses";
+import { parseReceiptImage } from "../api/receipts";
 
 // dictionary of keywords for rule-based auto-categorization
 const CATEGORY_KEYWORDS = {
@@ -85,6 +86,7 @@ const suggestCategory = (description) => {
 
 function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
   const { user } = useAuth();
+  const fileInputRef = useRef(null);
 
   // Form fields
   const [description, setDescription] = useState("");
@@ -98,6 +100,11 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Receipt scanning UT state
+  const [receiptScanning, setReceiptScanning] = useState(false);
+  const [receiptError, setReceiptError] = useState("");
+  const [receiptSuccess, setReceiptSuccess] = useState(false);
 
   // Initialise per-member input maps when members list arrives
   useEffect(() => {
@@ -146,6 +153,62 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
     0,
   );
   const pctRemaining = parseFloat((100 - totalPctEntered).toFixed(1));
+
+  const handleReceiptUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setReceiptError("");
+    setReceiptSuccess(false);
+
+    // Client-side size check [5MB limit]
+    if (file.size > 5 * 1024 * 1024) {
+      setReceiptError("Image too large. Please use an image under 5MB.");
+      return;
+    }
+
+    setReceiptScanning(true);
+
+    try {
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader(); // browser FileReader object
+        reader.readAsDataURL(file);
+
+        // Extract only the base64 part from the Data URL
+        // "data:image/jpeg;base64,/9j/4AAQ..." => the part after the comma is needed
+        reader.onload = () => {
+          resolve(reader.result.split(",")[1]);
+        };
+        reader.onerror = reject;
+      });
+
+      const result = await parseReceiptImage(base64, file.type);
+
+      // Pre-fill form fields with extracted data
+      setAmount(result.amount.toString());
+      setDescription(result.merchant);
+
+      // Match the returned category name to our loaded categories list
+      const matchedCategory = categories.find(
+        (c) => c.name.toLowerCase() === result.category.toLowerCase(),
+      );
+      if (matchedCategory) {
+        setCategoryId(matchedCategory.id);
+      }
+
+      setReceiptSuccess(true);
+    } catch (err) {
+      setReceiptError(
+        err.response?.data?.error ||
+          "Could not read receipt. Please fill manually.",
+      );
+    } finally {
+      setReceiptScanning(false);
+      // reset file input so same file can be uploaded again if needed (otherwise onChange does not get triggered)
+      e.target.value = "";
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -235,6 +298,44 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
               {user.name} (you)
             </div>
           </div>
+
+          {/* Hidden file input (triggered by the button below) */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleReceiptUpload}
+            className="hidden"
+          />
+
+          {/* Scan receipt button */}
+          <div className="flex justify-end mb-1">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={receiptScanning || categories.length === 0} // disable if categories haven't loaded yet
+              className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 disabled:opacity-50"
+            >
+              {receiptScanning ? (
+                <>
+                  <span className="animate-spin inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full"></span>
+                  Scanning...
+                </>
+              ) : (
+                <>📷 Scan receipt</>
+              )}
+            </button>
+          </div>
+
+          {/* Feedback messages */}
+          {receiptSuccess && (
+            <p className="text-green-600 text-xs mb-2">
+              ✓ Receipt scanned. Review the fields below and adjust if needed
+            </p>
+          )}
+          {receiptError && (
+            <p className="text-red-500 text-xs mb-2">{receiptError}</p>
+          )}
 
           {/* Description */}
           <div>

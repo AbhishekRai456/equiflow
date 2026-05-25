@@ -113,27 +113,27 @@ const getSpendingInsights = async (req, res) => {
     // Build the prompt
 
     const prompt = `
-    You are a financial assistant for a shared expense splitting app.
-    Analyse this user's spending data and generate exactly 3 short, specific insights.
+You are a financial assistant for a shared expense splitting app.
+Analyse this user's spending data and generate exactly 3 short, specific insights.
 
-    SPENDING DATA:
-    - This month (${currentMonthKey}) total: ₹${thisMonthTotal.toFixed(0)}
-    - Last month (${lastMonthKey}) total: ₹${lastMonthTotal.toFixed(0)}
-    - This month by category: ${formatCategoryBreakdown(thisMonthByCategory)}
-    - Last month by category: ${formatCategoryBreakdown(lastMonthByCategory)}
-    - Number of groups: ${memberships.length}
-    - Most active group: ${mostActiveGroupName}
+SPENDING DATA:
+- This month (${currentMonthKey}) total: ₹${thisMonthTotal.toFixed(0)}
+- Last month (${lastMonthKey}) total: ₹${lastMonthTotal.toFixed(0)}
+- This month by category: ${formatCategoryBreakdown(thisMonthByCategory)}
+- Last month by category: ${formatCategoryBreakdown(lastMonthByCategory)}
+- Number of groups: ${memberships.length}
+- Most active group: ${mostActiveGroupName}
 
-    RULES:
-    - Each insight must be under 15 words
-    - Be specific with numbers or percentages where the data supports it
-    - Be observational, not judgmental
-    - If this month has no data, comment on last month's patterns
-    - Return ONLY a valid JSON array of exactly 3 strings, no other text
+RULES:
+- Each insight must be under 15 words
+- Be specific with numbers or percentages where the data supports it
+- Be observational, not judgmental
+- If this month has no data, comment on last month's patterns
+- Return ONLY a valid JSON array of exactly 3 strings, no other text
 
-    EXAMPLE OUTPUT:
-    ["Food spending is your biggest expense at 45% of total.", "You spent 30% more this month than last month.", "Most of your expenses are in the Goa Trip group."]
-    `;
+EXAMPLE OUTPUT:
+["Food spending is your biggest expense at 45% of total.", "You spent 30% more this month than last month.", "Most of your expenses are in the Goa Trip group."]
+`;
 
     // Call Gemini API
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
