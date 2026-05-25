@@ -3,6 +3,86 @@ import { useAuth } from "../context/AuthContext";
 import { fetchCategories } from "../api/categories";
 import { createExpense } from "../api/expenses";
 
+// dictionary of keywords for rule-based auto-categorization
+const CATEGORY_KEYWORDS = {
+  Food: [
+    "dinner",
+    "lunch",
+    "breakfast",
+    "food",
+    "eat",
+    "pizza",
+    "burger",
+    "cafe",
+    "restaurant",
+    "swiggy",
+    "zomato",
+    "biryani",
+    "chai",
+    "coffee",
+    "snack",
+    "groceries",
+  ],
+  Travel: [
+    "uber",
+    "ola",
+    "auto",
+    "cab",
+    "taxi",
+    "flight",
+    "train",
+    "bus",
+    "fuel",
+    "petrol",
+    "metro",
+    "rapido",
+    "toll",
+    "parking",
+    "ferry",
+  ],
+  Entertainment: [
+    "movie",
+    "netflix",
+    "spotify",
+    "game",
+    "concert",
+    "party",
+    "bar",
+    "pub",
+    "show",
+    "event",
+    "ticket",
+    "bowling",
+  ],
+  Utilities: [
+    "rent",
+    "electric",
+    "electricity",
+    "wifi",
+    "internet",
+    "water",
+    "bill",
+    "maintenance",
+    "recharge",
+    "gas",
+  ],
+  Others: [],
+};
+
+// scans a description string to suggest a matching category
+// TC = O(N * K) ~ O(N * 50) ~ O(N)
+// - N is the length of the description string.
+// - K is the total number of keywords across all categories.
+const suggestCategory = (description) => {
+  const lower = description.toLowerCase();
+  for (const [catName, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((kw) => lower.includes(kw))) {
+      return catName;
+    }
+  }
+  return null;
+};
+
 function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
   const { user } = useAuth();
 
@@ -164,7 +244,17 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
             <input
               type="text"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setDescription(value);
+
+                // suggest a category based on what user is typing
+                const suggested = suggestCategory(value);
+                if (suggested && categories.length > 0) {
+                  const match = categories.find((c) => c.name === suggested);
+                  if (match) setCategoryId(match.id);
+                }
+              }}
               placeholder="e.g. Dinner, Groceries, Auto fare"
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               autoFocus

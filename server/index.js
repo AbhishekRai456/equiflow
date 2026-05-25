@@ -28,11 +28,13 @@ const authRoutes = require("./routes/auth");
 const groupRoutes = require("./routes/groupRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const insightsRoutes = require("./routes/insightsRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/insights", insightsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

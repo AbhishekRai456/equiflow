@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { fetchDashboard } from "../api/dashboard";
+import { fetchSpendingInsights } from "../api/insights";
 import {
   BarChart,
   Bar,
@@ -53,6 +54,10 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [insights, setInsights] = useState([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsFetched, setInsightsFetched] = useState(false);
+
   useEffect(() => {
     const loadDashboard = async () => {
       try {
@@ -67,6 +72,20 @@ function DashboardPage() {
 
     loadDashboard();
   }, []);
+
+  const handleGenerateInsights = async () => {
+    setInsightsLoading(true);
+    try {
+      const data = await fetchSpendingInsights();
+      setInsights(data);
+      setInsightsFetched(true);
+    } catch (err) {
+      setInsights(["Could not generate insights right now."]);
+      setInsightsFetched(true);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -140,6 +159,58 @@ function DashboardPage() {
             </p>
             <p className="text-xs text-red-500 mt-1">across all groups</p>
           </div>
+        </div>
+
+        {/* AI Spending Insights */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Smart Insights
+              </h2>
+              <p className="text-sm text-gray-500">
+                AI-powered insights based on your spending patterns
+              </p>
+            </div>
+            <button
+              onClick={handleGenerateInsights}
+              disabled={insightsLoading}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {insightsLoading ? (
+                <>
+                  <span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span>
+                  Analysing...
+                </>
+              ) : insightsFetched ? (
+                "Refresh"
+              ) : (
+                "Generate Insights"
+              )}
+            </button>
+          </div>
+
+          {/* Before first generate */}
+          {!insightsFetched && !insightsLoading && (
+            <p className="text-sm text-gray-400 text-center py-4">
+              Click above to analyse your spending patterns
+            </p>
+          )}
+
+          {/* Insights list */}
+          {insightsFetched && insights.length > 0 && (
+            <ul className="space-y-2">
+              {insights.map((insight, index) => (
+                <li
+                  key={index}
+                  className="flex items-start gap-3 bg-white rounded-xl px-4 py-3 shadow-sm"
+                >
+                  <span className="text-blue-500 mt-0.5">✦</span>
+                  <span className="text-sm text-gray-700">{insight}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Per-group breakdown */}
