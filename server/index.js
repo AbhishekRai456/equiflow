@@ -30,6 +30,7 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const insightsRoutes = require("./routes/insightsRoutes");
 const receiptsRoutes = require("./routes/receiptsRoutes");
+const notificationsRoutes = require("./routes/notificationsRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
@@ -37,6 +38,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/insights", insightsRoutes);
 app.use("/api/receipts", receiptsRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

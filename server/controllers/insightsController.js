@@ -112,15 +112,29 @@ const getSpendingInsights = async (req, res) => {
 
     // Build the prompt
 
+    const hasLastMonthData = lastMonthTotal > 0;
+
+    // Build the comparison section conditionally
+    const comparisonSection = hasLastMonthData
+      ? `- Last month (${lastMonthKey}) total: ₹${lastMonthTotal.toFixed(0)}
+- Last month by category: ${formatCategoryBreakdown(lastMonthByCategory)}
+- Month-over-month context: compare this month to last month where relevant`
+      : `- Last month: No spending data available (user may be new)
+- Month-over-month context: DO NOT make any month-over-month comparisons — there is no previous month to compare against. Focus on this month's patterns and category breakdown only.`;
+
+    // Give example conditionally
+    const exampleOutput = hasLastMonthData
+      ? `["Food spending is your biggest expense at 45% of total.", "You spent 30% more this month than last month.", "Most of your expenses are in the Goa Trip group."]`
+      : `["Food spending is your biggest expense at 45% of total.", "You have spent ₹1500 on Travel so far.", "Most of your expenses are in the Goa Trip group."]`;
+
     const prompt = `
 You are a financial assistant for a shared expense splitting app.
 Analyse this user's spending data and generate exactly 3 short, specific insights.
 
 SPENDING DATA:
 - This month (${currentMonthKey}) total: ₹${thisMonthTotal.toFixed(0)}
-- Last month (${lastMonthKey}) total: ₹${lastMonthTotal.toFixed(0)}
 - This month by category: ${formatCategoryBreakdown(thisMonthByCategory)}
-- Last month by category: ${formatCategoryBreakdown(lastMonthByCategory)}
+${comparisonSection}
 - Number of groups: ${memberships.length}
 - Most active group: ${mostActiveGroupName}
 
@@ -128,12 +142,11 @@ RULES:
 - Each insight must be under 15 words
 - Be specific with numbers or percentages where the data supports it
 - Be observational, not judgmental
-- If this month has no data, comment on last month's patterns
+- If this month's total is 0, DO NOT say spending dropped by 100%. Instead, focus your insights entirely on last month's habits and patterns.
 - Return ONLY a valid JSON array of exactly 3 strings, no other text
 
 EXAMPLE OUTPUT:
-["Food spending is your biggest expense at 45% of total.", "You spent 30% more this month than last month.", "Most of your expenses are in the Goa Trip group."]
-`;
+${exampleOutput}`;
 
     // Call Gemini API
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });

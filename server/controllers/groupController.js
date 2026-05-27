@@ -116,6 +116,25 @@ const addMember = async (req, res) => {
       },
     });
 
+    // notify the added user
+    try {
+      const groupForNotif = await prisma.group.findUnique({
+        where: { id: groupId },
+        select: { name: true },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: userToAdd.id,
+          message: `You were added to the group "${groupForNotif.name}"`,
+          type: "GROUP_JOINED",
+          groupId,
+        },
+      });
+    } catch (notifError) {
+      console.error("Failed to create group join notification:", notifError);
+    }
+
     res.status(201).json({
       message: "Member added successfully",
       user: {

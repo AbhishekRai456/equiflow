@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // existing context
+import NotificationBell from "./NotificationBell";
 
 function Navbar() {
   const { user, logout } = useAuth(); // user is null if not logged in
@@ -27,6 +28,7 @@ function Navbar() {
             >
               Groups
             </Link>
+            <NotificationBell />
             <button
               onClick={handleLogout}
               className="text-red-500 hover:text-red-600 font-medium"

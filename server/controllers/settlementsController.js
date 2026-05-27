@@ -51,6 +51,31 @@ const recordSettlement = async (req, res) => {
       },
     });
 
+    // notify the receiver that they've been paid
+    try {
+      const [payer, groupForNotif] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: payerId },
+          select: { name: true },
+        }),
+        prisma.group.findUnique({
+          where: { id: groupId },
+          select: { name: true },
+        }),
+      ]);
+
+      await prisma.notification.create({
+        data: {
+          userId: receiverId,
+          message: `${payer.name} paid you ₹${parseFloat(amount).toFixed(2)} in ${groupForNotif.name}`,
+          type: "SETTLEMENT",
+          groupId,
+        },
+      });
+    } catch (notifError) {
+      console.error("Failed to create settlement notification:", notifError);
+    }
+
     res.status(201).json({ message: "Settlement recorded successfully" });
   } catch (error) {
     console.error("Record settlement error:", error);

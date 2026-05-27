@@ -191,6 +191,31 @@ const addExpense = async (req, res) => {
       },
     });
 
+    // notify other group members about the new expense
+    try {
+      const groupForNotif = await prisma.group.findUnique({
+        where: { id: groupId },
+        select: { name: true },
+      });
+
+      const otherMemberIds = members
+        .filter((m) => m.userId !== userId)
+        .map((m) => m.userId);
+
+      if (otherMemberIds.length > 0) {
+        await prisma.notification.createMany({
+          data: otherMemberIds.map((memberId) => ({
+            userId: memberId,
+            message: `${fullExpense.paidBy.name} added a ₹${parsedAmount.toFixed(2)} expense in ${groupForNotif.name}`,
+            type: "EXPENSE_ADDED",
+            groupId,
+          })),
+        });
+      }
+    } catch (notifError) {
+      console.error("Failed to create expense notifications:", notifError);
+    }
+
     res.status(201).json({ expense: fullExpense });
   } catch (error) {
     console.error("Add expense error:", error);
