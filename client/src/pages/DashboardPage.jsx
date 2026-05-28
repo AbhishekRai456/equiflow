@@ -152,7 +152,7 @@ function DashboardPage() {
         {/* Welcome header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
-            Welcome back, {user.name.split(" ")[0]}
+            Welcome, {user.name.split(" ")[0]}
           </h1>
           <p className="text-gray-500 mt-1">Here's your expense summary</p>
         </div>

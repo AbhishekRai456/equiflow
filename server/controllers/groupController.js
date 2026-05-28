@@ -1,7 +1,7 @@
 const prisma = require("../prisma/client");
 
 const createGroup = async (req, res) => {
-  const { name } = req.body;
+  const name = req.body.name?.trim();
   const userId = req.userId; // set by authMiddleware after verifying JWT
 
   if (!name) {
@@ -67,7 +67,7 @@ const getMyGroups = async (req, res) => {
 
 const addMember = async (req, res) => {
   const { groupId } = req.params; // comes from URL /groups/:groupId/members
-  const { email } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
   const userId = req.userId;
 
   if (!email) {

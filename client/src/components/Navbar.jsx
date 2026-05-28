@@ -1,11 +1,12 @@
 import { useState, useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext"; // existing context
 import NotificationBell from "./NotificationBell";
 
 function Navbar() {
   const { user, logout } = useAuth(); // user is null if not logged in
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -24,25 +25,22 @@ function Navbar() {
           to={user ? "/dashboard" : "/"}
           className="font-bold text-blue-500 text-lg"
         >
-          SplitEase
+          EquiFlow
         </Link>
 
         {user ? (
           <>
             {/* Desktop links (hidden on mobile) */}
             <div className="hidden sm:flex items-center gap-4">
-              <span className="text-gray-500 text-sm">
-                Hi, {user.name.split(" ")[0]}
-              </span>
               <Link
                 to="/dashboard"
-                className="text-gray-600 hover:text-blue-500 font-medium text-sm"
+                className={`hover:text-blue-500 text-sm ${location.pathname === "/dashboard" ? "font-bold text-black" : "font-medium text-gray-600"}`}
               >
                 Dashboard
               </Link>
               <Link
                 to="/groups"
-                className="text-gray-600 hover:text-blue-500 font-medium text-sm"
+                className={`hover:text-blue-500 text-sm ${location.pathname === "/groups" ? "font-bold text-black" : "font-medium text-gray-600"}`}
               >
                 Groups
               </Link>
@@ -99,10 +97,16 @@ function Navbar() {
         ) : (
           // not logged in -> always show login/register
           <div className="flex gap-4">
-            <Link to="/login" className="text-gray-600 hover:text-blue-500">
+            <Link
+              to="/login"
+              className={`hover:text-blue-500 text-sm ${location.pathname === "/login" ? "font-bold text-black" : "font-medium text-gray-600"}`}
+            >
               Login
             </Link>
-            <Link to="/register" className="text-gray-600 hover:text-blue-500">
+            <Link
+              to="/register"
+              className={`hover:text-blue-500 text-sm ${location.pathname === "/register" ? "font-bold text-black" : "font-medium text-gray-600"}`}
+            >
               Register
             </Link>
           </div>
@@ -111,20 +115,17 @@ function Navbar() {
       {/* Mobile dropdown menu */}
       {user && menuOpen && (
         <div className="sm:hidden mt-3 pt-3 border-t border-gray-100 flex flex-col gap-1">
-          <p className="text-gray-400 text-xs px-2 mb-1">
-            Hi, {user.name.split(" ")[0]}
-          </p>
           <Link
             to="/dashboard"
             onClick={closeMenu}
-            className="text-gray-700 hover:bg-gray-50 px-2 py-2 rounded-lg text-sm font-medium"
+            className={`hover:bg-gray-50 px-2 py-2 rounded-lg text-sm ${location.pathname === "/dashboard" ? "font-bold text-black" : "font-medium text-gray-700"}`}
           >
             Dashboard
           </Link>
           <Link
             to="/groups"
             onClick={closeMenu}
-            className="text-gray-700 hover:bg-gray-50 px-2 py-2 rounded-lg text-sm font-medium"
+            className={`hover:bg-gray-50 px-2 py-2 rounded-lg text-sm ${location.pathname === "/groups" ? "font-bold text-black" : "font-medium text-gray-700"}`}
           >
             Groups
           </Link>
