@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import Skeleton from "../components/Skeleton";
 import { fetchGroupAnalytics } from "../api/analytics";
 import {
   BarChart,
@@ -52,34 +53,72 @@ function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // fetches group analytics (runs on initial mount, when groupId URL changes, AND on manual retry)
+  const load = async () => {
+    setLoading(true);   // reset loading so skeleton shows again on retry
+    setError("");
+    try {
+      const data = await fetchGroupAnalytics(groupId);
+      setAnalytics(data);
+    } catch (err) {
+      setError("Failed to load analytics.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await fetchGroupAnalytics(groupId);
-        setAnalytics(data);
-      } catch (err) {
-        setError("Failed to load analytics.");
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
   }, [groupId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading analytics...</p>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-3xl mx-auto">
+          {/* Header Skeleton */}
+          <div className="mb-8">
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          
+          {/* Stat Cards Skeleton */}
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <Skeleton className="h-4 w-24 mb-2" />
+              <Skeleton className="h-8 w-32" />
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <Skeleton className="h-4 w-32 mb-2" />
+              <Skeleton className="h-8 w-20" />
+            </div>
+          </div>
+
+          {/* Chart Area Skeleton */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <Skeleton className="h-6 w-48 mb-6" />
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-5/6" />
+              <Skeleton className="h-8 w-4/5" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if(error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-red-500">{error}</p>
+      <div className="text-center mt-20">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={loadGroups}
+          className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
+        >
+          Try again
+        </button>
       </div>
-    );
+    )
   }
 
   // Format monthly data with readable labels for the chart

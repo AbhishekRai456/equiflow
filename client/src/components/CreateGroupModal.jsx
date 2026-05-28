@@ -1,4 +1,5 @@
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { createGroup } from "../api/groups";
 
 function CreateGroupModal({ onClose, onGroupCreated }) {
@@ -21,6 +22,7 @@ function CreateGroupModal({ onClose, onGroupCreated }) {
 
       // tell the parent page about the new group so it can update its list
       onGroupCreated(newGroup);
+      toast.success("Group created!");
 
       // close the modal
       onClose();

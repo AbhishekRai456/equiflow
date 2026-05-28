@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Skeleton from "../components/Skeleton";
 import { fetchMyGroups } from "../api/groups";
 import CreateGroupModal from "../components/CreateGroupModal";
 import { useNavigate } from "react-router-dom";
@@ -10,19 +11,21 @@ function GroupsPage() {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false); // controls modal visibility
 
-  // runs once when the page loads (fetches user's groups)
-  useEffect(() => {
-    const loadGroups = async () => {
-      try {
-        const data = await fetchMyGroups();
-        setGroups(data);
-      } catch (err) {
-        setError("Failed to load groups. Please try again.");
-      } finally {
-        setLoading(false); // hide the loading state either way
-      }
-    };
+  // Fetches user's groups (runs on initial page load AND when retrying after an error)
+  const loadGroups = async () => {
+    setLoading(true); // reset loading so skeleton shows again on retry
+    setError("");
+    try {
+      const data = await fetchMyGroups();
+      setGroups(data);
+    } catch {
+      setError("Failed to load groups. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadGroups();
   }, []);
 
@@ -53,11 +56,32 @@ function GroupsPage() {
 
         {/* Loading state */}
         {loading && (
-          <p className="text-center text-gray-400 mt-20">Loading groups...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl p-6 border border-gray-100"
+              >
+                <Skeleton className="h-6 w-3/4 mb-3" />
+                <Skeleton className="h-4 w-1/3 mb-2" />
+                <Skeleton className="h-3 w-1/4" />
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Error state */}
-        {error && <p className="text-center text-red-500 mt-20">{error}</p>}
+        {error && (
+          <div className="text-center mt-20">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button
+              onClick={loadGroups}
+              className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
+            >
+              Try again
+            </button>
+          </div>
+        )}
 
         {/* Empty state (only shown when done loading, there is no error, and no groups exist) */}
         {!loading && !error && groups.length === 0 && (

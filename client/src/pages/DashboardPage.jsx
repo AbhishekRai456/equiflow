@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Skeleton from "../components/Skeleton";
 import { useAuth } from "../context/AuthContext";
 import { fetchDashboard } from "../api/dashboard";
 import { fetchSpendingInsights } from "../api/insights";
@@ -58,18 +59,20 @@ function DashboardPage() {
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsFetched, setInsightsFetched] = useState(false);
 
+  // Loads dashboard data (runs on initial page load AND when retrying after an error)
+  const loadDashboard = async () => {
+    try {
+      setLoading(true); // reset loading so skeleton shows again on retry
+      setError("");
+      const data = await fetchDashboard();
+      setSummary(data);
+    } catch (err) {
+      setError("Failed to load dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const data = await fetchDashboard();
-        setSummary(data);
-      } catch (err) {
-        setError("Failed to load dashboard.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadDashboard();
   }, []);
 
@@ -87,18 +90,55 @@ function DashboardPage() {
     }
   };
 
+  // loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading dashboard...</p>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-3xl mx-auto">
+          {/* Stat cards skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-gray-100 p-5"
+              >
+                <Skeleton className="h-4 w-1/2 mb-3" />
+                <Skeleton className="h-8 w-2/3 mb-2" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            ))}
+          </div>
+          {/* Group rows skeleton */}
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex justify-between"
+              >
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-1/3 mb-2" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+                <Skeleton className="h-6 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
+  // error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-red-500">{error}</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={loadDashboard}
+          className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
+        >
+          Try again
+        </button>
       </div>
     );
   }

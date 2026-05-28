@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { fetchGroupById, addGroupMember } from "../api/groups";
 import { fetchGroupExpenses, fetchGroupBalances } from "../api/expenses";
 import { recordSettlement, fetchSettlements } from "../api/settlements";
 import AddExpenseModal from "../components/AddExpenseModal";
+import Skeleton from "../components/Skeleton";
 
 function GroupDetailPage() {
   const { groupId } = useParams(); // reads :groupId from the URL
@@ -31,7 +33,6 @@ function GroupDetailPage() {
   // add member form state
   const [memberEmail, setMemberEmail] = useState("");
   const [addMemberError, setAddMemberError] = useState("");
-  const [addMemberSuccess, setAddMemberSuccess] = useState("");
   const [addingMember, setAddingMember] = useState(false);
 
   // pay a member/custom settlement form state
@@ -50,44 +51,44 @@ function GroupDetailPage() {
       ? expenses
       : expenses.filter((e) => e.category.id === selectedCategory);
 
-  // fetch group details when page loads
-  useEffect(() => {
-    const loadAll = async () => {
-      try {
-        const [groupData, expensesData, balancesData, settlementsData] =
-          await Promise.all([
-            fetchGroupById(groupId),
-            fetchGroupExpenses(groupId),
-            fetchGroupBalances(groupId),
-            fetchSettlements(groupId),
-          ]);
-        setGroup(groupData);
+  // fetch group details (runs on initial mount, when groupId URL changes, AND on manual retry)
+  const loadAll = async () => {
+    setLoading(true); // reset loading so skeleton shows again on retry
+    setError("");
+    try {
+      const [groupData, expensesData, balancesData, settlementsData] =
+        await Promise.all([
+          fetchGroupById(groupId),
+          fetchGroupExpenses(groupId),
+          fetchGroupBalances(groupId),
+          fetchSettlements(groupId),
+        ]);
+      setGroup(groupData);
 
-        // pre-select the first non-current user member in the dropdown
-        const otherMembers = groupData.members.filter(
-          (m) => m.user.id !== user.id,
-        );
-        if (otherMembers.length > 0) {
-          setDirectPayToId(otherMembers[0].user.id);
-        }
-
-        setExpenses(expensesData);
-        setBalances(balancesData);
-        setSettlementHistory(settlementsData);
-      } catch (err) {
-        setError("Failed to load group details.");
-      } finally {
-        setLoading(false);
+      // pre-select the first non-current user member in the dropdown
+      const otherMembers = groupData.members.filter(
+        (m) => m.user.id !== user.id,
+      );
+      if (otherMembers.length > 0) {
+        setDirectPayToId(otherMembers[0].user.id);
       }
-    };
 
+      setExpenses(expensesData);
+      setBalances(balancesData);
+      setSettlementHistory(settlementsData);
+    } catch (err) {
+      setError("Failed to load group details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
     loadAll();
   }, [groupId]); // re-run if groupId in the URL ever changes
 
   const handleAddMember = async (e) => {
     e.preventDefault();
     setAddMemberError("");
-    setAddMemberSuccess("");
 
     if (!memberEmail.trim()) {
       setAddMemberError("Please enter an email address");
@@ -110,7 +111,7 @@ function GroupDetailPage() {
         members: [...prev.members, newMember],
       }));
 
-      setAddMemberSuccess(`${result.user.name} was added to the group`);
+      toast.success(`${result.user.name} added to the group`);
       setMemberEmail(""); // clear the input
     } catch (err) {
       setAddMemberError(err.response?.data?.error || "Failed to add member");
@@ -122,6 +123,7 @@ function GroupDetailPage() {
   const handleExpenseAdded = async (newExpense) => {
     setExpenses((prev) => [newExpense, ...prev]);
     setSelectedCategory("ALL"); // so that new expense is always visible
+    toast.success("Expense added!");
 
     // re-fetch updated balances whenever a new expense is added
     try {
@@ -144,8 +146,9 @@ function GroupDetailPage() {
       ]);
       setBalances(balancesData);
       setSettlementHistory(settlementsData);
+      toast.success("Payment recorded");
     } catch (err) {
-      alert(err.response?.data?.error || "Failed to record settlement");
+      toast.error(err.response?.data?.error || "Failed to record settlement");
     } finally {
       setIsSettling(false);
     }
@@ -177,6 +180,7 @@ function GroupDetailPage() {
 
       // Clear the input field text upon a successful payment
       setDirectPayAmount("");
+      toast.success("Payment recorded");
     } catch (err) {
       setDirectPayError(
         err.response?.data?.error || "Failed to record payment",
@@ -189,8 +193,57 @@ function GroupDetailPage() {
   // loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-400">Loading group...</p>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-2xl mx-auto">
+          {/* Back button skeleton */}
+          <div className="mb-6">
+            <Skeleton className="h-4 w-24" />
+          </div>
+
+          {/* Group header skeleton */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <Skeleton className="h-8 w-48 mb-2" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+              <div className="flex gap-3">
+                <Skeleton className="h-10 w-28 rounded-lg" />
+                <Skeleton className="h-10 w-32 rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          {/* Members list skeleton */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-40" />
+              </div>
+              <div className="flex justify-between">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+          </div>
+
+          {/* Balances skeleton */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <Skeleton className="h-5 w-24" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <div className="flex justify-between">
+                <Skeleton className="h-5 w-28" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -198,8 +251,14 @@ function GroupDetailPage() {
   // error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-red-500">{error}</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={loadAll}
+          className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -453,9 +512,6 @@ function GroupDetailPage() {
 
           {addMemberError && (
             <p className="text-red-500 text-sm mb-3">{addMemberError}</p>
-          )}
-          {addMemberSuccess && (
-            <p className="text-green-500 text-sm mb-3">{addMemberSuccess}</p>
           )}
 
           <form onSubmit={handleAddMember} className="flex gap-3">

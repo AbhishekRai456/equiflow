@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import { fetchCategories } from "../api/categories";
 import { createExpense } from "../api/expenses";
@@ -104,7 +105,6 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
   // Receipt scanning UT state
   const [receiptScanning, setReceiptScanning] = useState(false);
   const [receiptError, setReceiptError] = useState("");
-  const [receiptSuccess, setReceiptSuccess] = useState(false);
 
   // Initialise per-member input maps when members list arrives
   useEffect(() => {
@@ -159,7 +159,6 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
     if (!file) return;
 
     setReceiptError("");
-    setReceiptSuccess(false);
 
     // Client-side size check [5MB limit]
     if (file.size > 5 * 1024 * 1024) {
@@ -183,7 +182,14 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
         reader.onerror = reject;
       });
 
-      const result = await parseReceiptImage(base64, file.type);
+      const result = await toast.promise(parseReceiptImage(base64, file.type), {
+        loading: "Scanning receipt...",
+        success:
+          "Receipt scanned. Review the fields and adjust if needed",
+        error: (err) =>
+          err.response?.data?.error ||
+          "Could not read receipt. Please fill manually.",
+      });
 
       // Pre-fill form fields with extracted data
       setAmount(result.amount.toString());
@@ -196,13 +202,9 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
       if (matchedCategory) {
         setCategoryId(matchedCategory.id);
       }
-
-      setReceiptSuccess(true);
     } catch (err) {
-      setReceiptError(
-        err.response?.data?.error ||
-          "Could not read receipt. Please fill manually.",
-      );
+      // toast.promise already shows the error toast
+      setReceiptError("Please fill the fields manually.");
     } finally {
       setReceiptScanning(false);
       // reset file input so same file can be uploaded again if needed (otherwise onChange does not get triggered)
@@ -328,11 +330,6 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
           </div>
 
           {/* Feedback messages */}
-          {receiptSuccess && (
-            <p className="text-green-600 text-xs mb-2">
-              ✓ Receipt scanned. Review the fields below and adjust if needed
-            </p>
-          )}
           {receiptError && (
             <p className="text-red-500 text-xs mb-2">{receiptError}</p>
           )}
