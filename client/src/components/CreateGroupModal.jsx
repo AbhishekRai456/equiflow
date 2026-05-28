@@ -41,7 +41,7 @@ function CreateGroupModal({ onClose, onGroupCreated }) {
     >
       {/* white modal, stopPropagation stops clicks inside from closing the modal */}
       <div
-        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md"
+        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-2xl font-bold text-gray-800 mb-6">

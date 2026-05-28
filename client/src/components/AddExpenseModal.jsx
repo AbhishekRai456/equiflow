@@ -184,8 +184,7 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
 
       const result = await toast.promise(parseReceiptImage(base64, file.type), {
         loading: "Scanning receipt...",
-        success:
-          "Receipt scanned. Review the fields and adjust if needed",
+        success: "Receipt scanned. Review the fields and adjust if needed",
         error: (err) =>
           err.response?.data?.error ||
           "Could not read receipt. Please fill manually.",
@@ -283,7 +282,7 @@ function AddExpenseModal({ groupId, members, onClose, onExpenseAdded }) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-screen overflow-y-auto"
+        className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-2xl font-bold text-gray-800 mb-6">Add Expense</h2>

@@ -277,7 +277,7 @@ function GroupDetailPage() {
 
         {/* Group header */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div>
               <h1 className="text-3xl font-bold text-gray-800">{group.name}</h1>
               <p className="text-sm text-gray-400 mt-1">
@@ -285,7 +285,7 @@ function GroupDetailPage() {
                 {new Date(group.createdAt).toLocaleDateString()}
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:flex-shrink-0">
               <button
                 onClick={() => navigate(`/groups/${groupId}/analytics`)}
                 className="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50"
@@ -428,7 +428,7 @@ function GroupDetailPage() {
                               handleSettle(s.from.id, s.to.id, s.amount)
                             }
                             disabled={isSettling}
-                            className="text-xs bg-white border border-gray-300 text-gray-600 px-3 py-1 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                            className="text-xs bg-white border border-gray-300 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                           >
                             {fromIsYou ? "I paid" : "Mark received"}
                           </button>
@@ -452,12 +452,12 @@ function GroupDetailPage() {
                 <p className="text-red-500 text-xs mb-2">{directPayError}</p>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 {/* Dropdown to select member */}
                 <select
                   value={directPayToId}
                   onChange={(e) => setDirectPayToId(e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full sm:flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {group.members
                     .filter((m) => m.user.id !== user.id)
@@ -469,7 +469,7 @@ function GroupDetailPage() {
                 </select>
 
                 {/* Amount input field */}
-                <div className="relative">
+                <div className="relative w-full sm:w-28">
                   <span className="absolute left-3 top-2.5 text-gray-400 text-sm">
                     ₹
                   </span>
@@ -488,7 +488,7 @@ function GroupDetailPage() {
                 <button
                   onClick={handleDirectPay}
                   disabled={isSettling}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
                 >
                   {isSettling ? "Paying..." : "Pay"}
                 </button>

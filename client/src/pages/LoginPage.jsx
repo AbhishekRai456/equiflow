@@ -38,7 +38,7 @@ function LoginPage() {
           e.preventDefault(); // Stop browser from reloading the page
           handleSubmit();
         }}
-        className="bg-white p-8 rounded-lg shadow-md w-full max-w-md"
+        className="bg-white p-8 rounded-lg shadow-md w-full max-w-md mx-2 sm:mx-auto"
       >
         <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
           Welcome Back!

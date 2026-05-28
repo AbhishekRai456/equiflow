@@ -55,7 +55,7 @@ function AnalyticsPage() {
 
   // fetches group analytics (runs on initial mount, when groupId URL changes, AND on manual retry)
   const load = async () => {
-    setLoading(true);   // reset loading so skeleton shows again on retry
+    setLoading(true); // reset loading so skeleton shows again on retry
     setError("");
     try {
       const data = await fetchGroupAnalytics(groupId);
@@ -80,7 +80,7 @@ function AnalyticsPage() {
             <Skeleton className="h-8 w-48 mb-2" />
             <Skeleton className="h-4 w-32" />
           </div>
-          
+
           {/* Stat Cards Skeleton */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-white rounded-2xl border border-gray-100 p-5">
@@ -107,18 +107,18 @@ function AnalyticsPage() {
     );
   }
 
-  if(error) {
+  if (error) {
     return (
       <div className="text-center mt-20">
         <p className="text-red-500 mb-4">{error}</p>
         <button
-          onClick={loadGroups}
+          onClick={load}
           className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700"
         >
           Try again
         </button>
       </div>
-    )
+    );
   }
 
   // Format monthly data with readable labels for the chart
@@ -201,12 +201,12 @@ function AnalyticsPage() {
                   tickLine={false}
                 />
                 <YAxis
+                  width={70}
                   type="category"
                   dataKey="category"
-                  tick={{ fontSize: 13, fill: "#374151" }}
+                  tick={{ fontSize: 11, fill: "#374151" }}
                   axisLine={false}
                   tickLine={false}
-                  width={90}
                 />
                 <Tooltip
                   content={<RupeeTooltip />}

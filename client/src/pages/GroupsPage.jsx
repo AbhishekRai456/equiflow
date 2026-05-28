@@ -48,7 +48,7 @@ function GroupsPage() {
           </div>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg font-semibold hover:bg-blue-700"
+            className="bg-blue-600 text-white px-3 sm:px-5 py-2 sm:py-3 rounded-lg font-semibold hover:bg-blue-700"
           >
             + New Group
           </button>

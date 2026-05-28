@@ -359,7 +359,7 @@ function DashboardPage() {
                     tick={{ fontSize: 13, fill: "#374151" }}
                     axisLine={false}
                     tickLine={false}
-                    width={90}
+                    width={80}
                   />
                   <Tooltip
                     content={<RupeeTooltip />}
