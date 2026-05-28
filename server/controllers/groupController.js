@@ -9,6 +9,25 @@ const createGroup = async (req, res) => {
   }
 
   try {
+
+    const existingGroupMembership = await prisma.groupMember.findFirst({
+      where: {
+        userId: userId,
+        group: {
+          name: {
+            equals: name,
+            mode: 'insensitive'
+          }
+        }
+      }
+    });
+
+    if (existingGroupMembership) {
+      return res.status(400).json({ 
+        error: "You already have a group with this name." 
+      });
+    }
+
     // create the group row
     const group = await prisma.group.create({
       data: {
